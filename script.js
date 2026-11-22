@@ -1,123 +1,50 @@
-const cursor = document.getElementById("cursor");
-const cursorRing = document.getElementById("cursorRing");
+const menuButton = document.querySelector(".menu-toggle");
+const navigation = document.querySelector("#site-nav");
+const mobileLayout = window.matchMedia("(max-width: 41.999rem)");
 
-
-let mouseX = 0;
-let mouseY = 0;
-
-let ringX = 0;
-let ringY = 0;
-
-
-document.addEventListener("mousemove", (event) => {
-
-  mouseX = event.clientX;
-  mouseY = event.clientY;
-
-  cursor.style.transform =
-    `translate(${mouseX - 5}px, ${mouseY - 5}px)`;
-
-});
-
-
-function animateCursorRing() {
-
-  ringX += (mouseX - ringX - 16) * 0.12;
-  ringY += (mouseY - ringY - 16) * 0.12;
-
-  cursorRing.style.transform =
-    `translate(${ringX}px, ${ringY}px)`;
-
-  requestAnimationFrame(animateCursorRing);
-
+function setMenu(open) {
+  menuButton.setAttribute("aria-expanded", String(open));
+  navigation.hidden = mobileLayout.matches && !open;
 }
 
+function syncNavigation() {
+  menuButton.hidden = !mobileLayout.matches;
+  const focusWasInNav = navigation.contains(document.activeElement);
+  setMenu(false);
+  if (mobileLayout.matches && focusWasInNav) menuButton.focus();
+}
 
-animateCursorRing();
+syncNavigation();
+mobileLayout.addEventListener("change", syncNavigation);
 
-
-
-const revealElements =
-  document.querySelectorAll(".reveal");
-
-
-const observer =
-  new IntersectionObserver(
-
-    entries => {
-
-      entries.forEach(entry => {
-
-        if (entry.isIntersecting) {
-
-          entry.target.classList.add("visible");
-
-          observer.unobserve(entry.target);
-
-        }
-
-      });
-
-    },
-
-    {
-      threshold: 0.1
-    }
-
-  );
-
-
-revealElements.forEach(element => {
-
-  observer.observe(element);
-
+menuButton.addEventListener("click", () => {
+  setMenu(menuButton.getAttribute("aria-expanded") !== "true");
 });
 
+navigation.addEventListener("click", (event) => {
+  const link = event.target.closest("a");
+  if (!link || !mobileLayout.matches) return;
 
-
-const sections =
-  document.querySelectorAll("section[id]");
-
-
-const navLinks =
-  document.querySelectorAll(".nav-links a");
-
-
-window.addEventListener("scroll", () => {
-
-  let currentSection = "";
-
-
-  sections.forEach(section => {
-
-    const sectionTop =
-      section.offsetTop - 150;
-
-
-    if (window.scrollY >= sectionTop) {
-
-      currentSection =
-        section.getAttribute("id");
-
-    }
-
-  });
-
-
-  navLinks.forEach(link => {
-
-    link.classList.remove("active");
-
-
-    if (
-      link.getAttribute("href") ===
-      `#${currentSection}`
-    ) {
-
-      link.classList.add("active");
-
-    }
-
-  });
-
+  const section = document.querySelector(link.hash);
+  section.setAttribute("tabindex", "-1");
+  setMenu(false);
+  section.focus({ preventScroll: true });
 });
+
+document.addEventListener("keydown", (event) => {
+  if (event.key !== "Escape" || menuButton.getAttribute("aria-expanded") !== "true") return;
+  setMenu(false);
+  menuButton.focus();
+});
+
+if ("IntersectionObserver" in window && !window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+  const observer = new IntersectionObserver((entries) => {
+    for (const entry of entries) {
+      if (!entry.isIntersecting) continue;
+      entry.target.classList.add("is-entering");
+      observer.unobserve(entry.target);
+    }
+  }, { threshold: 0.12 });
+
+  document.querySelectorAll(".project").forEach((project) => observer.observe(project));
+}
